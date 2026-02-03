@@ -1,30 +1,30 @@
 // netlify/functions/puzzles.js
-const puzzlesData = require('../../src/puzzles.json');
+import puzzlesData from '../../src/puzzles.json' with { type: 'json' };
 
-exports.handler = async (event, context) => {
-  const path = event.path.replace('/.netlify/functions/puzzles', '');
-  const segments = path.split('/').filter(Boolean);
+export const handler = async (event) => {
+  const segments = event.path.split('/').filter(Boolean);
+  const resource = segments[segments.length - 1];
 
-  // GET /api/puzzles
-  if (segments.length === 0) {
+  if (resource === 'puzzles') {
     return {
       statusCode: 200,
-      body: JSON.stringify(puzzlesData.puzzles),
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(puzzlesData.puzzles)
     };
   }
 
-  // GET /api/puzzles/:id
-  const id = segments[0];
-  const puzzle = puzzlesData.puzzles.find(p => p.id === id);
-
+  const puzzle = puzzlesData.puzzles.find(p => p.id === resource);
+  
   if (puzzle) {
     return {
       statusCode: 200,
-      body: JSON.stringify(puzzle),
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(puzzle)
     };
   }
 
-  return { statusCode: 404, body: "Puzzle not found" };
+  return { 
+    statusCode: 404, 
+    body: JSON.stringify({ error: "Puzzle not found" }) 
+  };
 };
