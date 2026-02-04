@@ -2,20 +2,17 @@ import { getStore } from "@netlify/blobs";
 
 export const handler = async (event, context) => {
   try {
-    // 1. Initialize the store
-    const store = getStore("game-data"); 
+    const store = getStore("game-data");
     
-    // 2. Extract resource ID from the path
-    const segments = event.path.split('/').filter(Boolean);
-    const resource = segments[segments.length - 1];
-
-    // 3. Retrieve data (using getJSON or standard get)
-    // Use JSON.parse if the convenience method isn't available in your version
+    // Netlify Blobs .get() returns null if no data exists
     const rawData = await store.get("puzzles-list"); 
     const puzzles = rawData ? JSON.parse(rawData) : [];
 
-    // 4. Handle Routing
-    if (resource === 'puzzles') {
+    const segments = event.path.split('/').filter(Boolean);
+    const id = segments[segments.length - 1];
+
+    // GET /api/puzzles
+    if (id === 'puzzles' || event.path.endsWith('/puzzles')) {
       return {
         statusCode: 200,
         headers: { "Content-Type": "application/json" },
@@ -23,7 +20,8 @@ export const handler = async (event, context) => {
       };
     }
 
-    const puzzle = puzzles.find(p => p.id === resource);
+    // GET /api/puzzles/:id
+    const puzzle = puzzles.find(p => p.id === id);
     if (puzzle) {
       return {
         statusCode: 200,
@@ -32,13 +30,15 @@ export const handler = async (event, context) => {
       };
     }
 
-    return { statusCode: 404, body: JSON.stringify({ error: "Puzzle not found" }) };
+    return { 
+      statusCode: 404, 
+      body: JSON.stringify({ error: "Not Found" }) 
+    };
   } catch (error) {
-    // This will appear in your Function Logs in the Netlify UI
-    console.error("Function Error:", error); 
+    console.error("Blob Error:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Internal Server Error", details: error.message })
+      body: JSON.stringify({ error: "Server Error", message: error.message })
     };
   }
 };
