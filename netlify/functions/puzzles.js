@@ -1,40 +1,42 @@
+// netlify/functions/puzzles.js
 import { getStore } from "@netlify/blobs";
 
-export const handler = async (event) => {
-  // Initialize the store named 'game-data'
-  const store = getStore("game-data"); 
-  const segments = event.path.split('/').filter(Boolean);
-  const resource = segments[segments.length - 1];
+export const handler = async (event, context) => {
+  try {
+    const store = getStore("game-data");
+    const segments = event.path.split('/').filter(Boolean);
+    const resource = segments[segments.length - 1];
 
-  // HANDLE GET REQUESTS (Reading Data)
-  if (event.httpMethod === "GET") {
+    // Logika untuk mengambil data
     const rawData = await store.get("puzzles-list", { type: "json" });
-    const puzzles = rawData || []; // Fallback to empty array if none exist
+    const puzzles = rawData || [];
 
-    if (resource === 'puzzles') {
-      return { statusCode: 200, body: JSON.stringify(puzzles) };
+    if (resource === 'puzzles' || event.path.endsWith('/puzzles')) {
+      return {
+        statusCode: 200,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(puzzles)
+      };
     }
 
     const puzzle = puzzles.find(p => p.id === resource);
-    return puzzle 
-      ? { statusCode: 200, body: JSON.stringify(puzzle) }
-      : { statusCode: 404, body: "Not Found" };
-  }
+    if (puzzle) {
+      return {
+        statusCode: 200,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(puzzle)
+      };
+    }
 
-  // HANDLE POST REQUESTS (Saving Data from Admin Panel)
-  if (event.httpMethod === "POST") {
-    const newPuzzle = JSON.parse(event.body);
-    const currentData = await store.get("puzzles-list", { type: "json" }) || [];
-    
-    // Add new puzzle to the list
-    currentData.push(newPuzzle);
-    
-    // Save back to Netlify Blobs
-    await store.setJSON("puzzles-list", currentData);
-
+    return { 
+      statusCode: 404, 
+      body: JSON.stringify({ error: "Puzzle tidak ditemukan" }) 
+    };
+  } catch (error) {
+    console.error("Error di Function:", error);
     return {
-      statusCode: 201,
-      body: JSON.stringify({ message: "Puzzle saved successfully!" })
+      statusCode: 500,
+      body: JSON.stringify({ error: "Terjadi kesalahan internal pada server" })
     };
   }
 };
